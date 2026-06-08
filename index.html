@@ -1,0 +1,1328 @@
+<!DOCTYPE html>
+<html>//frontend untuk absesi nya, deploy di vercel
+<head>
+    <base target="_top">
+    <title>Sistem Absensi Aerotron</title>
+    <link rel="icon" href="favicon.png" type="image/x-icon">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no">
+
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <script src="https://unpkg.com/html5-qrcode@2.0.9/dist/html5-qrcode.min.js"></script>
+    <script src="https://unpkg.com/@lottiefiles/dotlottie-wc@0.8.5/dist/dotlottie-wc.js" type="module"></script>
+    
+
+    <style>
+        /* =============================================== */
+        /* == STYLE DASAR & TAMPILAN MOBILE             == */
+        /* =============================================== */
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Inter', sans-serif; /* Font default biar lebih modern */
+        }
+
+        .container {
+            width: 100%;
+            padding-right: 15px;
+            padding-left: 15px;
+            margin-right: auto;
+            margin-left: auto;
+        }
+
+        #login-view { margin-top: 20px; }
+        #dashboard-view { display: none; }
+        /* =============================================== */
+        /* == STYLE LOADER FULLSCREEN (BARU)            == */
+        /* =============================================== */
+        #fullscreen-loader {
+            position: fixed; /* Tetap di layar saat scroll */
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.8); /* Background putih transparan */
+            display: flex; /* Pakai flexbox buat centering */
+            justify-content: center;
+            align-items: center;
+            z-index: 9999; /* Pastikan di atas semua elemen lain */
+            backdrop-filter: blur(5px); /* Efek blur (opsional) */
+            -webkit-backdrop-filter: blur(5px); /* Untuk Safari */
+        }
+
+        /* CSS Loader Dots dari KODE LU (ganti .container jadi .loader-container) */
+        .loader-container {
+            --uib-size: 60px; /* Ukuran bisa disesuaikan */
+            --uib-color: #007bff; /* Warna biru Bootstrap */
+            --uib-speed: 1.5s;
+            --dot-size: calc(var(--uib-size) * 0.17);
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            height: var(--uib-size);
+            width: var(--uib-size);
+            animation: smoothRotate calc(var(--uib-speed) * 1.8) linear infinite;
+        }
+        .dot {
+            position: absolute; top: 0; left: 0;
+            display: flex; align-items: flex-start; justify-content: center;
+            height: 100%; width: 100%;
+            animation: rotate var(--uib-speed) ease-in-out infinite;
+        }
+        .dot::before {
+            content: ''; height: var(--dot-size); width: var(--dot-size);
+            border-radius: 50%; background-color: var(--uib-color);
+            transition: background-color 0.3s ease;
+        }
+        /* Delay animasi dots */
+        .dot:nth-child(2), .dot:nth-child(2)::before { animation-delay: calc(var(--uib-speed) * -0.835 * 0.5); }
+        .dot:nth-child(3), .dot:nth-child(3)::before { animation-delay: calc(var(--uib-speed) * -0.668 * 0.5); }
+        .dot:nth-child(4), .dot:nth-child(4)::before { animation-delay: calc(var(--uib-speed) * -0.501 * 0.5); }
+        .dot:nth-child(5), .dot:nth-child(5)::before { animation-delay: calc(var(--uib-speed) * -0.334 * 0.5); }
+        .dot:nth-child(6), .dot:nth-child(6)::before { animation-delay: calc(var(--uib-speed) * -0.167 * 0.5); }
+
+        @keyframes rotate { 0% { transform: rotate(0deg); } 65%, 100% { transform: rotate(360deg); } }
+        @keyframes smoothRotate { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        /* =============================================== */
+
+        /* =============================================== */
+        /* == UI POLISH (BARU)                          == */
+        /* =============================================== */
+
+        /* Bikin kartu jadi "halus" */
+        .card {
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            border: none;
+        }
+
+        /* Halusin tombol */
+        .btn {
+            border-radius: 0.5rem;
+        }
+
+        /* Tombol Pill Minimalis */
+        .btn-pill {
+            border-radius: 50rem;
+            padding: 0.3rem 0.85rem; /* Padding atas-bawah dikecilin */
+            font-size: 0.875rem;
+            font-weight: 600;
+            white-space: normal; /* Biar bisa wrap text */
+            line-height: 1.4; /* Jarak antar baris kalau wrap */
+            text-align: center;
+            display: inline-block; /* Agar width-nya pas */
+            min-width: 60px; /* Lebar minimum biar nggak aneh */
+        }
+        /* CSS BARU UNTUK GRID STATUS MINGGUAN */
+        #monthly-attendance {
+            display: flex; /* Aktifkan Flexbox */
+            flex-wrap: wrap; /* Biar bisa turun baris */
+            gap: 10px; /* Jarak antar kotak */
+            padding-left: 15px; /* Biar rata kiri */
+            padding-right: 15px;
+        }
+        .week-status-item {
+            background-color: #e9ecef; /* Background abu-abu muda */
+            padding: 8px 12px;
+            border-radius: 0.5rem; /* Sudut tumpul */
+            font-size: 0.9rem;
+            flex-grow: 1; /* Biar lebarnya fleksibel */
+            text-align: center; /* Teks di tengah */
+            min-width: 120px; /* Lebar minimum per kotak */
+        }
+        /* CSS BARU UNTUK RUNNING TEXT MODERN */
+        .running-text-wrapper {
+            overflow: hidden;      /* Sembunyikan teks yg keluar box */
+            white-space: nowrap;   /* Pastikan teks 1 baris */
+            position: relative;    /* Diperlukan untuk animasi */
+        }
+        .running-text-content {
+            display: inline-block; /* Agar bisa dianimasikan */
+            padding-left: 100%;    /* Mulai dari luar layar kanan */
+            animation: marquee-scroll 15s linear infinite; /* Terapkan animasi */
+        }
+
+        /* Definisi Animasinya */
+        @keyframes marquee-scroll {
+            0%   { transform: translateX(0); }     /* Mulai dari kanan */
+            100% { transform: translateX(-100%); } /* Selesai di kiri */
+        }
+
+        /* Hentikan animasi saat di-hover (opsional) */
+        .running-text-wrapper:hover .running-text-content {
+            animation-play-state: paused;
+        }
+
+        /* Style Tabel Admin (Clean) */
+        #sheet-viewer-table {
+            width: 100%;
+            border-collapse: collapse;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            background-color: #ffffff;
+        }
+        #sheet-viewer-table th {
+            background-color: #198754; /* Header Hijau Tua */
+            color: #ffffff;
+            text-align: left;
+            padding: 12px 16px;
+            font-weight: 600;
+            font-size: 14px;
+            letter-spacing: 0.3px;
+        }
+        #sheet-viewer-table td {
+            padding: 8px 16px; /* Padding sel dikecilin */
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 14px;
+            color: #333333;
+            transition: background-color 0.2s ease;
+            vertical-align: middle; /* Biar tombol pill di tengah */
+        }
+        #sheet-viewer-table tr:hover td { background-color: #f8faff; }
+        #sheet-viewer-table tr:last-child td { border-bottom: none; }
+
+        /* Modal Detail Simpel */
+        #detailModal .modal-body { text-align: center; }
+        #detailModal #detail-text {
+            font-size: 1.5rem; /* Font besar */
+            font-weight: bold;
+            padding: 20px;
+            border-radius: 8px;
+            background-color: transparent; /* Hapus background pre */
+            border: none; /* Hapus border pre */
+            white-space: normal; /* Biar wrap */
+        }
+
+        /* =============================================== */
+        /* -- Style Footer -- */
+        .footer-custom {
+            background-color: #212529; color: #adb5bd;
+            padding-top: 2rem; padding-bottom: 1rem; margin-top: 3rem;
+            border-radius: 0.75rem 0.75rem 0 0;
+        }
+        .footer-custom h5 { color: #ffffff; }
+        .footer-custom a { color: #adb5bd; text-decoration: none; }
+        .footer-custom a:hover { color: #ffffff; text-decoration: underline; }
+        .footer-custom hr { border-top: 1px solid #495057; }
+        .footer-custom .row > div { margin-bottom: 1.5rem; }
+
+        /* =============================================== */
+        /* == ATURAN RESPONSIVE                         == */
+        /* =============================================== */
+        @media (max-width: 768px) {
+            #sheet-viewer-table th, #sheet-viewer-table td {
+                padding: 10px 12px;
+                font-size: 13px;
+            }
+            .btn-pill {
+                font-size: 0.8rem;
+                padding: 0.25rem 0.7rem;
+            }
+        }
+        @media (min-width: 768px) { .container { max-width: 720px; } }
+        @media (min-width: 992px) { .container { max-width: 960px; } }
+        @media (min-width: 1200px) { .container { max-width: 1140px; } }
+
+        /* CSS BARU UNTUK EFEK GLOW API STREAK */
+    #streak-animation dotlottie-wc[style*="display: block"] { /* Target animasi yg lagi tampil */
+    filter: drop-shadow(0 0 10px rgba(255, 100, 0, 0.6)); /* Efek glow oranye */
+    /* Alternatif: Pakai box-shadow kalau drop-shadow nggak cocok */
+    /* box-shadow: 0 0 15px 5px rgba(255, 100, 0, 0.5); */
+}
+    </style>
+</head>
+<body>
+  <div id="fullscreen-loader" style="display: none;"> <div class="loader-container"> <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+        </div>
+    </div>
+    <div class="container">
+        <div id="login-view">
+            <img src="https://raw.githubusercontent.com/NiceStackApple/aset-absensi-robotic/main/Banner%20robotic.jpg" alt="Banner Aerotron" style="width: 100%; border-radius: 8px; margin-bottom: 20px;">
+            <div class="card">
+                <div class="card-header"><h3>Login Absensi Aerotron</h3></div>
+                <div class="card-body">
+                    <div id="error-message" class="alert alert-danger" style="display: none;"></div>
+                    <form id="login-form">
+                        <div class="form-group"><label for="nama">Nama</label><input type="text" class="form-control" id="nama" required></div>
+                        <div class="form-group"><label for="password">Password</label><input type="password" class="form-control" id="password" required></div>
+                        <button type="submit" class="btn btn-primary btn-block"><span id="login-button-text">Login</span><div id="login-loader" class="spinner-border spinner-border-sm" role="status" style="display: none;"></div></button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div id="dashboard-view">
+            <img src="https://raw.githubusercontent.com/NiceStackApple/aset-absensi-robotic/main/Banner%20robotic.jpg" alt="Banner Aerotron" style="width: 100%; border-radius: 8px; margin-top: 20px;">
+
+            <div class="d-flex justify-content-between align-items-center mt-4 mb-3">
+                <h2 id="welcome-message" style="font-size: 1.75rem;">Selamat Datang, Pengguna!</h2>
+                <button class="btn btn-danger" onclick="logout()">Logout</button>
+            </div>
+
+            <div id="running-text-container" class="alert alert-info running-text-wrapper" style="display: none; font-weight: bold; border-radius: 0.5rem; padding-top: 0.8rem; padding-bottom: 0.8rem; overflow: hidden; white-space: nowrap;">
+              <span id="running-text-content" class="running-text-content"></span> </div>
+            
+                  <div id="streak-card" class="card mb-4" style="display: block;"> <div class="card-body">
+                      <div class="row align-items-center"> <div class="col-auto" id="streak-animation-container"> <div id="streak-animation" style="position: relative;"> <dotlottie-wc id="streak-level-1" src="https://lottie.host/fa4cda5b-9fad-4fe5-a0d2-684a9511be50/iSZVq0i9Es.lottie" style="width: 145px; height: 95px; display: none;" autoplay loop></dotlottie-wc>
+                            <dotlottie-wc id="streak-level-2" src="https://lottie.host/5c7aa082-e1c9-48c0-9f7f-f44715fd623a/gA7S2uW1fh.lottie" style="width: 145px; height: 95px; display: none;" autoplay loop></dotlottie-wc>
+                            <dotlottie-wc id="streak-level-3" src="https://lottie.host/0852df83-1f88-4bea-ba1f-b543c97d4c6d/ghOnr8XNcu.lottie" style="width: 145px; height: 95px; display: none;" autoplay loop></dotlottie-wc>
+                        </div>
+                    </div>
+                    <div class="col"> <h5 id="streak-text" class="mb-0" style="font-weight: bold; text-align: left;">Memuat streak...</h5> </div>
+                </div>
+            </div>
+        </div>
+
+            <div class="card mb-4">
+                <div class="card-header">Menu Aksi</div>
+                <div class="card-body text-center">
+                    <button class="btn btn-success btn-lg m-2" data-toggle="modal" data-target="#qrModal">Absen Hadir (Scan QR)</button>
+                    <button class="btn btn-warning btn-lg m-2" data-toggle="modal" data-target="#izinModal">Ajukan Izin</button>
+                </div>
+            </div>
+
+            <div id="admin-panel" class="card mb-4" style="display: none; border: 2px solid #dc3545;">
+              <div class="card-header bg-danger text-white">
+                Panel Admin
+              </div>
+              <div class="card-body">
+                <form id="running-text-form" class="mb-3">
+                   <div class="form-group">
+                     <label for="running-text-input"><b>Buat Pengumuman</b> (Kosongkan untuk menghapus):</label>
+                     <input type="text" class="form-control" id="running-text-input" placeholder="Tulis pengumuman di sini...">
+                   </div>
+                   <button type="button" id="set-running-text-btn" class="btn btn-primary btn-block">Set Pengumuman</button>
+                </form>
+
+                <hr>
+
+                <form id="admin-form">
+                  <div class="form-group">
+                    <label for="alasan-libur"><b>Atur Status Libur Mingguan</b> (Wajib diisi):</label>
+                    <input type="text" class="form-control" id="alasan-libur" placeholder="Contoh: Libur Hari Santri (Pastikan ada kata 'Libur' atau 'Acara')" required>
+                  </div>
+                  <div class="form-group">
+                    <label for="target-week"><b>Set status untuk minggu ke:</b></label>
+                    <select class="form-control" id="target-week" required>
+                      <option value="1">Minggu 1</option>
+                      <option value="2">Minggu 2</option>
+                      <option value="3">Minggu 3</option>
+                      <option value="4">Minggu 4</option>
+                      <option value="5">Minggu 5</option>
+                    </select>
+                  </div>
+                  <button type="button" id="set-libur-btn" class="btn btn-warning">Set Status Libur</button>
+                  <button type="button" id="revoke-libur-btn" class="btn btn-danger float-right">Cabut Status (Reset ke "-")</button>
+                </form>
+
+                <hr>
+
+                <div class="mt-3">
+                   <h5>Penampil Sheet (<span id="sheet-name-viewer">-</span>)</h5>
+                   <button type="button" id="refresh-sheet-btn" class="btn btn-info btn-sm mb-2">
+                     <span id="refresh-loader" class="spinner-border spinner-border-sm" role="status" style="display: none;"></span>
+                     Tampilkan/Refresh Data Sheet
+                   </button>
+                   <div id="sheet-viewer-container" class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                     <p id="sheet-viewer-placeholder">Klik tombol di atas untuk memuat data...</p>
+                     <table id="sheet-viewer-table" class="table table-bordered table-sm" style="display: none;">
+                       </table>
+                   </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">Status Absensi Bulan Ini (<span id="current-month"></span>)</div>
+                <div class="card-body">
+                    <p>Minggu ini (<strong id="current-week"></strong>), status absensi Anda: <span id="current-status" class="badge badge-secondary">Memuat...</span></p>
+                    <div id="monthly-attendance"></div> </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">10 Riwayat Absensi Terakhir</div>
+                <div class="card-body table-responsive px-3"> <table class="table table-striped table-sm mb-0">
+                        <thead><tr><th>Waktu</th><th>Status</th><th>Keterangan</th></tr></thead>
+                        <tbody id="history-body"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <footer id="app-footer" class="footer-custom" style="display: none;">
+                <div class="container">
+                    <div class="row justify-content-between">
+                        <div class="col-12 col-md-5 mb-4">
+                            <h5>Robotic Man2Kudus</h5>
+                            <p style="font-size: 0.9rem;">Sistem Absensi Digital untuk efisiensi dan transparansi pencatatan kehadiran anggota ekstrakurikuler Robotic.</p>
+                        </div>
+
+                        <div class="col-6 col-md-auto mb-4">
+                            <h5>Navigasi</h5>
+                            <ul class="list-unstyled">
+                                <li><a href="https://discord.gg/amyxcGrZUx" target="_blank" rel="noopener noreferrer">Gabung Discord</a></li>
+                            </ul>
+                        </div>
+
+                        <div class="col-6 col-md-auto mb-4">
+                            <h5>Info Kontak</h5>
+                            <ul class="list-unstyled">
+                                <li><a href="https://wa.me/GANTINOWHATSAPP" target="_blank" rel="noopener noreferrer">WhatsApp (CONTACT)</a></li>
+                                <li><a href="https://www.instagram.com/m2k.robotics/" target="_blank" rel="noopener noreferrer">Instagram</a></li>
+                            </ul>
+                        </div>
+
+                        <div class="col-12 col-md-auto mb-4">
+                           <h5>Creator</h5>
+                           <ul class="list-unstyled">
+                             <li><a href="https://www.instagram.com/codingwithnico?igsh=dGpmODFmcXAybDh4" target="_blank" rel="noopener noreferrer">@codingwithnico</a></li>
+                           </ul>
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="text-center pt-2">
+                        <p class="mb-0" style="font-size: 0.8rem;">© 2025 Robotic Man2Kudus. All Rights Reserved.</p>
+                    </div>
+                </div>
+            </footer>
+        </div>
+    </div>
+
+    <div class="modal fade" id="qrModal" tabindex="-1" role="dialog"><div class="modal-dialog" role="document"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Scan QR Code Absensi</h5><button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button></div><div class="modal-body text-center"> <div id="qr-scan-area">
+        <div id="qr-reader" style="width: 100%;"></div>
+        <div id="qr-result" class="mt-3 font-weight-bold">Arahkan kamera ke QR Code...</div>
+    </div>
+    <div id="hadir-photo-area" style="display: none;">
+        <p>Silakan ambil foto selfie sebagai bukti kehadiran:</p>
+        <video id="hadir-video-preview" width="100%" style="border-radius: 8px;" autoplay playsinline></video>
+        <canvas id="hadir-photo-canvas" style="display: none;"></canvas>
+        <button type="button" id="hadir-capture-btn" class="btn btn-primary mt-3">Jepret Foto</button>
+        <p id="hadir-photo-status" class="mt-2 font-weight-bold"></p>
+    </div>
+</div></div></div></div>
+
+    <div class="modal fade" id="izinModal" tabindex="-1" role="dialog"><div class="modal-dialog" role="document"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Form Pengajuan Izin</h5><button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button></div><div class="modal-body text-left"><form id="izin-form"><div class="form-group"><label for="alasan">1. Tuliskan alasan izin Anda:</label><textarea class="form-control" id="alasan" rows="3" required></textarea></div><div class="form-group"><label>2. Ambil Foto Bukti (Wajib)</label><div id="camera-container" class="text-center"><video id="video-preview" width="100%" style="display: none;"></video><canvas id="photo-canvas" style="display: none;"></canvas><img id="photo-preview" src="" width="100%" style="display: none;" class="mb-2"/><button type="button" id="start-camera-btn" class="btn btn-secondary">Buka Kamera</button><button type="button" id="capture-btn" class="btn btn-primary" style="display: none;">Jepret Foto</button></div></div><button type="submit" class="btn btn-primary mt-3">Kirim Izin</button></form></div></div></div></div>
+
+    <div class="modal fade" id="detailModal" tabindex="-1" role="dialog">
+      <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+          <div class="modal-header"><h5 class="modal-title">Detail Status</h5></div>
+          <div class="modal-body">
+            <pre id="detail-text" style="white-space: pre-wrap; word-break: break-all; background-color: transparent; padding: 10px; border: none; text-align: center; font-size: 1.5rem; font-weight: bold;"></pre>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-dismiss="modal">Tutup</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal fade" id="previewModal" tabindex="-1" role="dialog">
+      <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+          <div class="modal-header"><h5 class="modal-title">Detail status</h5></div>
+          <div class="modal-body">
+            <strong>Keterangan:</strong>
+            <p id="preview-alasan" class="mb-2"></p>
+            <br> <strong>Bukti Foto:</strong>
+            <br> <img id="preview-image" src="" alt="Memuat bukti..." class="img-fluid rounded mb-2" />
+            <br> <a id="preview-link" href="#" target="_blank" rel="noopener noreferrer">Buka di Google Drive</a>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-dismiss="modal">Tutup</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal fade" id="infoModal" tabindex="-1" role="dialog">
+      <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content" style="border-radius: 1rem;">
+          <div class="modal-body text-center p-4">
+            <div id="infoModalIcon" class="mb-3"></div>
+            <h4 id="infoModalTitle" class="mb-2"></h4>
+            <p id="infoModalMessage"></p>
+            <button type="button" class="btn btn-primary" data-dismiss="modal">OK</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal fade" id="confirmModal" tabindex="-1" role="dialog" data-backdrop="static" data-keyboard="false">
+      <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content" style="border-radius: 1rem;">
+          <div class="modal-body p-4">
+            <h4 id="confirmModalTitle">Konfirmasi Tindakan</h4>
+            <p id="confirmModalMessage">Apakah Anda yakin?</p>
+            <div class="d-flex justify-content-end">
+              <button type="button" class="btn btn-secondary mr-2" data-dismiss="modal">Batal</button>
+              <button type="button" class="btn btn-danger" id="confirmModalBtn">Konfirmasi</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+
+    <script>
+
+        // ===================================
+        // “RUANG TAMU” / GLOBAL SCOPE
+        // ===================================
+
+        const API_URL = "/api/gas-proxy";
+        let currentUser = null, html5QrCode = null, capturedImageData = null, stream = null;
+
+        // --- Definisi Fungsi Global ---
+
+        function showDashboard() {
+            document.getElementById('login-view').style.display = 'none'; // Sembunyikan Login
+            document.getElementById('dashboard-view').style.display = 'block'; // Tampilkan Dashboard
+            document.getElementById('app-footer').style.display = 'block';
+            document.getElementById('welcome-message').innerText = `Selamat Datang, ${currentUser.nama}!`;
+        }
+
+        function updateDashboardUI(data) {
+            // Update Pengumuman
+            const announcementContainer = document.getElementById('running-text-container');
+            const announcementContent = document.getElementById('running-text-content');
+            if (data.runningText && data.runningText.trim() !== "") {
+              announcementContent.innerText = data.runningText;
+              announcementContainer.style.display = 'block';
+            } else {
+              announcementContainer.style.display = 'none';
+            }
+
+            // Update Streak
+            const streakCard = document.getElementById('streak-card'); // Ganti ID
+            const streakText = document.getElementById('streak-text');
+            const streakAnim1 = document.getElementById('streak-level-1');
+            const streakAnim2 = document.getElementById('streak-level-2');
+            const streakAnim3 = document.getElementById('streak-level-3');
+            const streakCount = data.streakCount || 0;
+            streakCard.style.display = 'block'; // Selalu tampilkan card
+            streakAnim1.style.display = 'none'; streakAnim2.style.display = 'none'; streakAnim3.style.display = 'none';
+            if (streakCount > 0) {
+              // Pakai innerHTML biar bisa masukin tag span
+streakText.innerHTML = `Streak <span style="color: #FFA500; font-weight: bold;">${streakCount} Minggu!</span>🔥`; // Warna Oranye (#FFA500)
+              if (streakCount >= 10) streakAnim3.style.display = 'block';
+              else if (streakCount >= 5) streakAnim2.style.display = 'block';
+              else streakAnim1.style.display = 'block';
+            } else {
+              streakText.innerText = `Ayo mulai streak kehadiranmu! 🔥`;
+            }
+
+            // Update Dashboard Utama
+            if (data.success) {
+                document.getElementById('current-month').innerText = data.currentMonth;
+                document.getElementById('current-week').innerText = data.currentWeek;
+                const statusBadge = document.getElementById('current-status');
+                const currentStatusLower = data.currentStatus.toLowerCase();
+                statusBadge.innerText = (currentStatusLower.includes('libur') || currentStatusLower.includes('acara')) ? 'Libur/Acara' : data.currentStatus;
+                statusBadge.className = 'badge ' + (data.currentStatus === 'Hadir' ? 'badge-success' : data.currentStatus === 'Izin' ? 'badge-warning' : (currentStatusLower.includes('libur') || currentStatusLower.includes('acara')) ? 'badge-primary' : 'badge-danger');
+
+                // Update Status Mingguan (Flexbox)
+                const monthlyDiv = document.getElementById('monthly-attendance');
+                monthlyDiv.innerHTML = '';
+                if(data.monthlyAttendance && data.monthlyAttendance.length > 0) { // Cek dulu
+                    data.monthlyAttendance.forEach(att => {
+                        if (att.status !== '-') {
+                            let statusClass = '';
+                            if (att.status === 'Hadir') statusClass = 'text-success';
+                            else if (att.status === 'Izin' || att.status.startsWith('(')) statusClass = 'text-warning';
+                            else if (att.status === 'Alpha') statusClass = 'text-danger';
+                            else if (att.status.toLowerCase().includes('libur') || att.status.toLowerCase().includes('acara')) statusClass = 'text-primary';
+                            else statusClass = 'text-dark';
+
+                            monthlyDiv.innerHTML += `
+                                <div class="week-status-item">
+                                    <strong>${att.week}:</strong>
+                                    <span class="${statusClass}">${att.status.includes('https://drive.google.com') ? 'Izin' : att.status}</span>
+                                </div>
+                            `;
+                        }
+                    });
+                }
+
+                // Update Riwayat Absensi
+                const historyBody = document.getElementById('history-body');
+                historyBody.innerHTML = '';
+                if (data.history && data.history.length > 0) {
+                    data.history.forEach(log => {
+                        let statusClass = 'badge-secondary';
+                        if (log.status === 'Hadir') statusClass = 'badge-success';
+                        else if (log.status === 'Izin') statusClass = 'badge-warning';
+                        else if (log.status === 'Alpha') statusClass = 'badge-danger';
+                        else if (log.status.toLowerCase().includes('libur') || log.status.toLowerCase().includes('acara')) statusClass = 'badge-primary';
+                        const logStatusLower = log.status.toLowerCase();
+                        historyBody.innerHTML += `<tr><td>${log.timestamp}</td><td><span class="badge ${statusClass}">${(logStatusLower.includes('libur') || logStatusLower.includes('acara')) ? 'Libur/Acara' : log.status}</span></td><td style="word-break: break-all;">${log.location}</td></tr>`;
+                    });
+                } else {
+                    historyBody.innerHTML = '<tr><td colspan="3" class="text-center">Tidak ada riwayat.</td></tr>';
+                }
+            } else {
+                showInfoModal('Gagal Memuat Dashboard', 'Gagal memuat data dashboard: ' + (data.message || 'Error tidak diketahui'), false);
+            }
+        }
+
+        // Fungsi handler untuk respon sukses (absen/izin)
+        function handleServerResponse(response) {
+            if (response.success) {
+                $('#qrModal').modal('hide');
+                $('#izinModal').modal('hide');
+                document.getElementById('izin-form').reset();
+                showInfoModal("Berhasil", response.message, true);
+                loadDashboard(); // Refresh data dashboard
+            } else {
+                showInfoModal("Gagal", response.message, false);
+            }
+        }
+
+        // Fungsi utilitas kamera
+        function stopCamera() {
+            const video = document.getElementById('video-preview');
+            if (stream) { stream.getTracks().forEach(track => track.stop()); stream = null; }
+            if (video) video.style.display = 'none'; // Cek null
+            const startBtn = document.getElementById('start-camera-btn');
+            if(startBtn) startBtn.style.display = 'inline-block';
+            const captureBtn = document.getElementById('capture-btn');
+            if(captureBtn) captureBtn.style.display = 'none';
+        }
+        function stopHadirCamera() {
+            const video = document.getElementById('hadir-video-preview');
+            if (stream) { stream.getTracks().forEach(track => track.stop()); stream = null; }
+            if (video) video.srcObject = null;
+        }
+
+        // Fungsi logout
+        function logout() {
+            localStorage.removeItem('loggedInUser');
+            currentUser = null;
+            location.reload();
+        }
+
+        // Fungsi modal pop-up (PENGGANTI ALERT)
+        function showInfoModal(title, message, isSuccess = false) {
+          const iconSuccess = '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" fill="green" class="bi bi-check-circle-fill" viewBox="0 0 16 16"><path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zm-3.97-3.03a.75.75 0 0 0-1.08.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-.01-1.05z"/></svg>';
+          const iconError = '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" fill="red" class="bi bi-x-circle-fill" viewBox="0 0 16 16"><path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.354 4.646a.5.5 0 1 0-.708.708L7.293 8l-2.647 2.646a.5.5 0 0 0 .708.708L8 8.707l2.646 2.647a.5.5 0 0 0 .708-.708L8.707 8l2.647-2.646a.5.5 0 0 0-.708-.708L8 7.293 5.354 4.646z"/></svg>';
+          const modalIcon = document.getElementById('infoModalIcon');
+          const modalTitle = document.getElementById('infoModalTitle');
+          const modalMessage = document.getElementById('infoModalMessage');
+          if(modalIcon) modalIcon.innerHTML = isSuccess ? iconSuccess : iconError;
+          if(modalTitle) modalTitle.innerText = title;
+          if(modalMessage) modalMessage.innerText = message;
+          $('#infoModal').modal('show');
+        }////////////////////////// batas update hri ini
+
+        // Fungsi (re)load data dashboard
+        // GANTI TOTAL FUNGSI loadDashboard DENGAN INI
+        async function loadDashboard() {
+          if (!currentUser) return;
+
+          const loader = document.getElementById('fullscreen-loader'); // Pakai ID loader baru
+          // Kita nggak perlu sembunyiin #dashboard-content lagi karena loader udah nutupin
+
+          // 1. Tampilkan Loader Fullscreen
+          if (loader) loader.style.display = 'flex'; // Pakai flex
+
+          // Hapus data lama (biar bersih sebelum load baru)
+          const currentStatusEl = document.getElementById('current-status');
+          if(currentStatusEl) { currentStatusEl.innerText = ''; currentStatusEl.className = 'badge badge-secondary'; }
+          const monthlyAttEl = document.getElementById('monthly-attendance');
+          if(monthlyAttEl) monthlyAttEl.innerHTML = '';
+          const historyBodyEl = document.getElementById('history-body');
+          if(historyBodyEl) historyBodyEl.innerHTML = '';
+          const streakTextEl = document.getElementById('streak-text');
+          if(streakTextEl) streakTextEl.innerText = 'Memuat streak...'; // Kasih teks loading di streak
+
+          try {
+            // 2. Ambil data dashboard
+            const dashboardData = await postToAPI({
+              action: 'getDashboardData',
+              nama: currentUser.nama,
+              divisi: currentUser.divisi
+            });
+
+            // 3. Update UI dengan data baru (ini akan ngisi #dashboard-content)
+            updateDashboardUI(dashboardData);
+
+            // 4. SEMBUNYIKAN Loader (HANYA JIKA SUKSES)
+            if (dashboardData.success) {
+                if (loader) loader.style.display = 'none';
+            } else {
+                // Jika gagal load data, loader tetap disembunyikan
+                if (loader) loader.style.display = 'none';
+            }
+
+          } catch (err) {
+            console.error('Gagal memuat dashboard:', err);
+            showInfoModal('Gagal', 'Gagal mengambil data dashboard: ' + err.message, false);
+            // Jika ERROR, loader tetap disembunyikan
+            if (loader) loader.style.display = 'none';
+          }
+        }
+
+        // Fungsi ambil lokasi (GPS)
+        function getCurrentPosition() {
+          return new Promise((resolve, reject) => {
+            if (!navigator.geolocation) {
+              reject(new Error('Geolocation tidak didukung oleh browser Anda.'));
+            } else {
+              navigator.geolocation.getCurrentPosition(
+                (position) => { resolve({ latitude: position.coords.latitude, longitude: position.coords.longitude }); },
+                () => { reject(new Error('Gagal mendapatkan lokasi. Pastikan GPS aktif dan Anda mengizinkan akses.')); },
+                { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+              );
+            }
+          });
+        }
+
+        // ===================================
+        // “KAMAR KHUSUS” / DOMContentLoaded
+        // ===================================
+        document.addEventListener('DOMContentLoaded', function() {
+
+            // Cek login dari localStorage
+            const loggedInUser = localStorage.getItem('loggedInUser');
+            if (loggedInUser) {
+                try {
+                    currentUser = JSON.parse(loggedInUser);
+                    if(currentUser && currentUser.nama) { // Cek validitas
+                        showDashboard();
+                        loadDashboard(); // Muat data dashboard
+                        if (currentUser.isAdmin) {
+                            const adminPanel = document.getElementById('admin-panel');
+                            if(adminPanel) adminPanel.style.display = 'block';
+                        }
+                    } else {
+                        // Data user tidak valid, hapus
+                        localStorage.removeItem('loggedInUser');
+                    }
+                } catch(e) {
+                    console.error("Error parsing user data:", e);
+                    localStorage.removeItem('loggedInUser'); // Hapus data rusak
+                }
+            }
+        // Listener Form Login
+        document.getElementById('login-form').addEventListener('submit', async function(e) {
+              e.preventDefault();
+              const loginButtonText = document.getElementById('login-button-text');
+              const loginLoader = document.getElementById('login-loader');
+              loginButtonText.style.display = 'none';
+              loginLoader.style.display = 'inline-block';
+
+              const nama = document.getElementById('nama').value;
+              const password = document.getElementById('password').value;
+
+              try {
+                const result = await postToAPI({
+                  action: 'authenticateUser',
+                  nama,
+                  password
+                });
+
+                if (result.success) {
+                  currentUser = { nama: result.nama, divisi: result.divisi, isAdmin: result.isAdmin };
+                  localStorage.setItem('loggedInUser', JSON.stringify(currentUser));
+                  showDashboard();
+                  loadDashboard();
+                  // Tampilkan panel admin JIKA dia admin
+                  if (currentUser.isAdmin) {
+                    document.getElementById('admin-panel').style.display = 'block';
+                  }
+                } else {
+                  const errorMessage = document.getElementById('error-message');
+                  errorMessage.innerText = result.message || 'Login gagal.';
+                  errorMessage.style.display = 'block';
+                }
+              } catch (err) {
+                console.error('Error:', err);
+                const errorMessage = document.getElementById('error-message');
+                errorMessage.innerText = 'Gagal terhubung ke server: ' + err.message;
+                errorMessage.style.display = 'block';
+              } finally {
+                loginButtonText.style.display = 'inline-block';
+                loginLoader.style.display = 'none';
+              }
+        });
+
+        // Listener Form Izin
+        document.getElementById('izin-form').addEventListener('submit', async function(e) {
+              e.preventDefault();
+              const submitButton = this.querySelector('button[type="submit"]');
+              const alasan = document.getElementById('alasan').value;
+              if (!capturedImageData) { showInfoModal('Gagal', 'Anda wajib mengambil foto bukti.', false); return; }
+
+              submitButton.disabled = true;
+              submitButton.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Mengirim...';
+
+              try {
+                const result = await postToAPI({
+                  action: 'markIzinFromDashboard',
+                  nama: currentUser.nama,
+                  divisi: currentUser.divisi,
+                  alasan,
+                  imageData: capturedImageData
+                });
+                handleServerResponse(result);
+              } catch (error) {
+                console.error('Error submitting izin:', error);
+                showInfoModal("Error", "Terjadi kesalahan teknis: " + error.message, false);
+              } finally {
+                submitButton.disabled = false;
+                submitButton.innerHTML = 'Kirim Izin';
+              }
+        });
+
+        // ===================================
+        // EVENT LISTENER PANEL ADMIN
+        // ===================================
+
+        // Listener Tombol Set Libur (dengan konfirmasi)
+        document.getElementById('set-libur-btn').addEventListener('click', async function() {
+          const alasan = document.getElementById('alasan-libur').value;
+          if (!alasan || alasan.trim() === "") {
+            showInfoModal("Gagal", "Alasan libur tidak boleh kosong.", false);
+            return;
+          }
+
+          const confirmBtn = document.getElementById('confirmModalBtn');
+          const confirmMsg = document.getElementById('confirmModalMessage');
+          confirmMsg.innerText = `YAKIN ingin mengubah status SEMUA pegawai menjadi "${alasan}"? Ini akan menimpa data minggu ini.`;
+          $('#confirmModal').modal('show');
+
+          let countdown = 10;
+          confirmBtn.disabled = true;
+          confirmBtn.innerText = `Konfirmasi (${countdown})`;
+
+          const interval = setInterval(() => {
+            countdown--;
+            confirmBtn.innerText = `Konfirmasi (${countdown})`;
+            if (countdown <= 0) {
+              clearInterval(interval);
+              confirmBtn.disabled = false;
+              confirmBtn.innerText = 'Konfirmasi';
+            }
+          }, 1000);
+
+          confirmBtn.onclick = async () => {
+            if (confirmBtn.disabled) return;
+            clearInterval(interval);
+            $('#confirmModal').modal('hide');
+            showInfoModal("Memproses...", "Sedang mengatur status libur, mohon tunggu...", false);
+
+            try {
+              // Ambil nilai minggu dari dropdown
+              const targetWeekValue = document.getElementById('target-week').value;
+              const result = await postToAPI({
+                action: 'setHolidayStatus',
+                nama: currentUser.nama,
+                alasanLibur: alasan,
+                targetWeek: targetWeekValue
+              });
+
+              if (result.success) {
+                showInfoModal("Berhasil", result.message, true);
+                loadDashboard();
+              } else {
+                showInfoModal("Gagal", result.message, false);
+              }
+            } catch (err) {
+              showInfoModal("Error", err.message, false);
+            }
+            confirmBtn.onclick = null;
+          };
+        });
+
+        // Listener Tombol Cabut Status (dengan konfirmasi)
+        document.getElementById('revoke-libur-btn').addEventListener('click', function() {
+          const confirmBtn = document.getElementById('confirmModalBtn');
+          const confirmMsg = document.getElementById('confirmModalMessage');
+          confirmMsg.innerText = "YAKIN ingin mencabut status? Ini akan me-reset status SEMUA pegawai di minggu ini menjadi '-'. Tindakan ini tidak bisa dibatalkan.";
+          $('#confirmModal').modal('show');
+
+          let countdown = 10;
+          confirmBtn.disabled = true;
+          confirmBtn.innerText = `Konfirmasi (${countdown})`;
+
+          const interval = setInterval(() => {
+            countdown--;
+            confirmBtn.innerText = `Konfirmasi (${countdown})`;
+            if (countdown <= 0) {
+              clearInterval(interval);
+              confirmBtn.disabled = false;
+              confirmBtn.innerText = 'Konfirmasi';
+            }
+          }, 1000);
+
+          confirmBtn.onclick = async () => {
+            if (confirmBtn.disabled) return;
+            clearInterval(interval);
+            $('#confirmModal').modal('hide');
+            showInfoModal("Memproses...", "Sedang me-reset status, mohon tunggu...", false);
+
+            try {
+              // Ambil nilai minggu dari dropdown (penting!)
+              const targetWeekValue = document.getElementById('target-week').value;
+              const result = await postToAPI({
+                action: 'revokeHolidayStatus',
+                nama: currentUser.nama,
+                targetWeek: targetWeekValue
+              });
+
+              if (result.success) {
+                showInfoModal("Berhasil", result.message, true);
+                loadDashboard();
+              } else {
+                showInfoModal("Gagal", result.message, false);
+              }
+            } catch (err) {
+              showInfoModal("Error", err.message, false);
+            }
+            confirmBtn.onclick = null;
+          };
+        });
+
+        // Listener Tombol Refresh Sheet Admin
+        document.getElementById('refresh-sheet-btn').addEventListener('click', async function() {
+          const btn = this;
+          const loader = document.getElementById('refresh-loader');
+          const placeholder = document.getElementById('sheet-viewer-placeholder');
+          const table = document.getElementById('sheet-viewer-table');
+          const sheetNameEl = document.getElementById('sheet-name-viewer');
+
+          btn.disabled = true;
+          loader.style.display = 'inline-block';
+          placeholder.innerText = 'Sedang memuat data...';
+          table.style.display = 'none';
+
+          try {
+            const result = await postToAPI({ action: 'getMonthlySheetData' });
+
+            if (result.success) {
+              placeholder.style.display = 'none';
+              table.style.display = 'table';
+              sheetNameEl.innerText = result.sheetName;
+              table.innerHTML = '';
+
+              // Buat <thead> (Header)
+              const thead = document.createElement('thead');
+              const headerRow = document.createElement('tr');
+              result.headers.forEach(headerText => {
+                if (!headerText) return;
+                const th = document.createElement('th');
+                th.scope = 'col';
+                th.innerText = headerText;
+                headerRow.appendChild(th);
+              });
+              thead.appendChild(headerRow);
+              table.appendChild(thead);
+
+              // Buat <tbody> (Isi Data)
+              const tbody = document.createElement('tbody');
+              result.studentData.forEach(rowData => {
+                const dataRow = document.createElement('tr');
+                rowData.forEach(cellTextRaw => {
+                  const td = document.createElement('td');
+                  if (typeof cellTextRaw === 'undefined' || cellTextRaw === null) {
+                    cellTextRaw = ''; // Handle sel kosong
+                  }
+                  const cellText = cellTextRaw.toString().trim();
+
+                  let cellHtml = '';
+                  let btnClass = '';
+                  let displayText = cellText;
+                  let modalTarget = '#detailModal'; // Modal default (simpel)
+
+                  // Logika Render Pill Semua Status
+                  if (cellText.includes('Hadir')) {
+                    btnClass = 'btn-success';
+                    displayText = 'Hadir';
+                    modalTarget = '#previewModal'; // Pakai modal fancy
+                  }
+                  else if (cellText === 'Alpha') {
+                    btnClass = 'btn-danger';
+                  }
+                  else if (cellText.toLowerCase().includes('libur') || cellText.toLowerCase().includes('acara')) {
+                    btnClass = 'btn-primary';
+                    displayText = 'Libur/Acara';
+                  }
+                  else if (cellText.includes('https://drive.google.com')) {
+                    // Ini adalah status IZIN
+                    btnClass = 'btn-warning';
+                    displayText = 'Izin';
+                    modalTarget = '#previewModal'; // Pakai modal fancy
+                  }
+                  else if (cellText === '-') {
+                     // Untuk '-', JANGAN buat tombol
+                     td.innerText = cellText;
+                     dataRow.appendChild(td);
+                     return; // Lanjut ke sel berikutnya
+                  }
+                  else {
+                    // Untuk teks nama pegawai (sel paling kiri)
+                    td.innerText = cellText;
+                    dataRow.appendChild(td);
+                    return; // Lanjut ke sel berikutnya
+                  }
+
+                  // Siapkan data untuk modal (parsing Izin di sini)
+                  let dataAlasan = '';
+                  let dataUrl = '';
+                  let detailText = cellText; // Default untuk modal simpel
+
+                  if (modalTarget === '#previewModal') { // Jika Izin
+                     try {
+                        let textToParse = cellText;
+                        if (cellText.startsWith('(') && cellText.endsWith(')')) {
+                            textToParse = cellText.substring(1, cellText.length - 1);
+                        }
+                        const parts = textToParse.split(',');
+                        dataUrl = parts.pop().trim();
+                        dataAlasan = parts.join(',');
+                        if (!dataUrl.startsWith('https://drive.google.com')) throw new Error();
+                     } catch (e) {
+                        // Jika parsing gagal, fallback ke modal simpel
+                        console.error("Gagal parsing data Izin:", cellText, e);
+                        modalTarget = '#detailModal';
+                        displayText = 'Izin (Err)';
+                        btnClass = 'btn-secondary'; // Ganti warna jadi abu-abu
+                     }
+                  }
+
+                  // Buat tombol pill-nya
+                  cellHtml = `<button type="button"
+                                      class="btn ${btnClass} btn-sm btn-pill"
+                                      data-toggle="modal"
+                                      data-target="${modalTarget}"
+                                      data-detail="${detailText.replace(/"/g, '"')}"
+                                      data-alasan="${dataAlasan.replace(/"/g, '"')}"
+                                      data-url="${dataUrl}">
+                                ${displayText}
+                              </button>`;
+
+                  td.innerHTML = cellHtml;
+                  dataRow.appendChild(td);
+                });
+                tbody.appendChild(dataRow);
+              });
+              table.appendChild(tbody);
+
+            } else {
+              placeholder.style.display = 'block';
+              placeholder.innerText = 'Gagal memuat: ' + result.message;
+              showInfoModal("Gagal", result.message, false);
+            }
+          } catch (err) {
+            placeholder.style.display = 'block';
+            placeholder.innerText = 'Error: ' + err.message;
+            showInfoModal("Error", err.message, false);
+          } finally {
+            btn.disabled = false;
+            loader.style.display = 'none';
+          }
+        });
+
+        // Listener Tombol Set Pengumuman
+        document.getElementById('set-running-text-btn').addEventListener('click', async function() {
+          const btn = this;
+          const text = document.getElementById('running-text-input').value;
+
+          btn.disabled = true;
+          btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Mengirim...';
+
+          try {
+            const result = await postToAPI({
+              action: "setRunningText",
+              nama: currentUser.nama,
+              text: text
+            });
+
+            if (result.success) {
+              showInfoModal("Berhasil", "Pengumuman berhasil diupdate.", true);
+              const announcementContainer = document.getElementById('running-text-container');
+              const announcementContent = document.getElementById('running-text-content');
+              if (text && text.trim() !== "") {
+                announcementContent.innerText = text;
+                announcementContainer.style.display = 'block';
+              } else {
+                announcementContainer.style.display = 'none';
+              }
+            } else {
+              showInfoModal("Gagal", result.message, false);
+            }
+          } catch (err) {
+            showInfoModal("Error", err.message, false);
+          } finally {
+            btn.disabled = false;
+            btn.innerHTML = 'Set Pengumuman';
+          }
+        });
+
+        // ===================================
+        // EVENT LISTENER KAMERA & MODAL LAIN
+        // ===================================
+
+        // Listener Kamera Izin
+        document.getElementById('start-camera-btn').addEventListener('click', async () => {
+            const video = document.getElementById('video-preview');
+            const photoPreview = document.getElementById('photo-preview');
+            const startCameraBtn = document.getElementById('start-camera-btn');
+            const captureBtn = document.getElementById('capture-btn');
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                video.srcObject = stream;
+                video.style.display = 'block';
+                photoPreview.style.display = 'none';
+                startCameraBtn.style.display = 'none';
+                captureBtn.style.display = 'inline-block';
+                video.play();
+            } catch (err) { showInfoModal("Gagal", "Tidak bisa mengakses kamera: " + err, false); }
+        });
+
+        // Listener Tombol Jepret Izin
+        document.getElementById('capture-btn').addEventListener('click', () => {
+            const video = document.getElementById('video-preview');
+            const canvas = document.getElementById('photo-canvas');
+            const photoPreview = document.getElementById('photo-preview');
+            const startCameraBtn = document.getElementById('start-camera-btn');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+            capturedImageData = canvas.toDataURL('image/jpeg');
+            photoPreview.src = capturedImageData;
+            video.style.display = 'none';
+            photoPreview.style.display = 'block';
+            document.getElementById('capture-btn').style.display = 'none';
+            startCameraBtn.innerText = 'Ambil Ulang';
+            startCameraBtn.style.display = 'inline-block';
+            stopCamera();
+        });
+
+        // Listener Modal QR (Saat DIBUKA)
+        $('#qrModal').on('show.bs.modal', function (e) {
+            // Reset UI ke state awal (Scan QR)
+            document.getElementById('qr-scan-area').style.display = 'block';
+            document.getElementById('hadir-photo-area').style.display = 'none';
+            document.getElementById('qr-result').innerText = "Arahkan kamera ke QR Code...";
+            document.getElementById('hadir-photo-status').innerText = '';
+            stopHadirCamera(); // Matikan stream kamera depan jika masih nyala
+
+            html5QrCode = new Html5Qrcode("qr-reader");
+            const qrResultElement = document.getElementById('qr-result');
+            const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+
+            const qrCodeSuccessCallback = async (decodedText, decodedResult) => {
+                if (!html5QrCode || !html5QrCode.isScanning) return; // Pastikan masih scan
+
+                qrResultElement.innerText = `Scan berhasil! Mendapatkan lokasi Anda...`;
+
+                try {
+                    await html5QrCode.stop();
+                    html5QrCode = null; // Reset objek scanner
+                    const position = await getCurrentPosition();
+                    qrResultElement.innerText = `Lokasi didapat! Memulai kamera depan...`;
+                    document.getElementById('qr-scan-area').style.display = 'none';
+                    document.getElementById('hadir-photo-area').style.display = 'block';
+                    await startHadirCamera();
+                    window.pendingAttendanceData = { decodedText, latitude: position.latitude, longitude: position.longitude };
+                } catch (error) {
+                    console.error('Error QR/Location/Camera:', error);
+                    showInfoModal("Error", "Gagal memproses: " + error.message, false);
+                    $('#qrModal').modal('hide');
+                }
+            };
+
+            html5QrCode.start({ facingMode: "environment" }, config, qrCodeSuccessCallback)
+                .catch(err => {
+                    qrResultElement.innerText = "ERROR: Gagal memulai kamera QR.";
+                    console.error("QR Start Error:", err);
+                });
+        });
+
+        // Listener Modal QR (Saat DITUTUP)
+        $('#qrModal').on('hide.bs.modal', function (e) {
+            if (html5QrCode && html5QrCode.isScanning) {
+                try { html5QrCode.stop(); } catch(e){}
+                html5QrCode = null;
+            }
+            stopHadirCamera(); // Pastikan kamera depan mati
+            window.pendingAttendanceData = null; // Hapus data pending
+        });
+
+        // Fungsi Baru Kamera Hadir
+        async function startHadirCamera() {
+            const video = document.getElementById('hadir-video-preview');
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+                video.srcObject = stream;
+            } catch (err) {
+                document.getElementById('hadir-photo-status').innerText = "Gagal memulai kamera depan: " + err.message;
+                console.error("Hadir Camera Start Error:", err);
+                throw err;
+            }
+        }
+
+        function stopHadirCamera() {
+            const video = document.getElementById('hadir-video-preview');
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                stream = null;
+            }
+            video.srcObject = null;
+        }
+
+        // Listener Tombol Jepret Hadir
+        document.getElementById('hadir-capture-btn').addEventListener('click', async () => {
+            const video = document.getElementById('hadir-video-preview');
+            const canvas = document.getElementById('hadir-photo-canvas');
+            const statusElement = document.getElementById('hadir-photo-status');
+            const captureBtn = document.getElementById('hadir-capture-btn');
+
+            if (!stream || !window.pendingAttendanceData) {
+                showInfoModal("Error", "Data absen tidak lengkap atau kamera belum siap.", false);
+                return;
+            }
+
+            statusElement.innerText = "Mengambil gambar...";
+            captureBtn.disabled = true;
+
+            try {
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+                const imageData = canvas.toDataURL('image/jpeg');
+                stopHadirCamera();
+                statusElement.innerText = "Foto diambil! Mengirim data absensi...";
+
+                const result = await postToAPI({
+                    action: 'markHadirViaQR',
+                    nama: currentUser.nama,
+                    divisi: currentUser.divisi,
+                    qrCodeData: window.pendingAttendanceData.decodedText,
+                    latitude: window.pendingAttendanceData.latitude,
+                    longitude: window.pendingAttendanceData.longitude,
+                    imageData: imageData
+                });
+
+                handleServerResponse(result);
+                window.pendingAttendanceData = null;
+
+            } catch (error) {
+                console.error('Error Capture/Submit Hadir:', error);
+                showInfoModal("Error", "Gagal memproses foto bukti: " + error.message, false);
+                statusElement.innerText = "Gagal: " + error.message;
+            } finally {
+                captureBtn.disabled = false;
+            }
+        });
+
+        // Listener Modal Izin (Saat DITUTUP)
+        $('#izinModal').on('hide.bs.modal', function(){
+            stopCamera();
+            document.getElementById('photo-preview').style.display = 'none';
+            document.getElementById('photo-preview').src = '';
+            capturedImageData = null;
+            document.getElementById('start-camera-btn').innerText = 'Buka Kamera';
+            document.getElementById('izin-form').reset();
+        });
+
+        // Listener Modal Preview Bukti (Saat DIBUKA)
+        $('#previewModal').on('show.bs.modal', function (event) {
+          const button = $(event.relatedTarget);
+          const alasan = button.data('alasan');
+          const url = button.data('url');
+
+          let previewUrl = '';
+          try {
+            // Sulap link GDrive jadi link thumbnail (FIXED: Ganti ID placeholder)
+            const fileId = url.split('/d/')[1].split('/')[0];
+            // Format URL thumbnail GDrive yang benar
+            previewUrl = `https://lh3.googleusercontent.com/d/${fileId}=s220`;
+          } catch (e) {
+            console.error("Gagal ekstrak ID GDrive:", e, "dari URL:", url);
+            previewUrl = '';
+          }
+
+          const modal = $(this);
+          modal.find('#preview-alasan').text(alasan || '(Tidak ada alasan)');
+          modal.find('#preview-image').attr('src', previewUrl || 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'); // Tampilkan placeholder jika gagal
+          modal.find('#preview-link').attr('href', url);
+        });
+
+        // Listener Modal Detail Status Simpel (Saat DIBUKA)
+        $('#detailModal').on('show.bs.modal', function (event) {
+          const button = $(event.relatedTarget);
+          const detail = button.data('detail');
+          const detailTextEl = $(this).find('#detail-text');
+
+          // Set teks dan warna sesuai status
+          detailTextEl.text(detail);
+          detailTextEl.removeClass('text-success text-danger text-primary text-secondary'); // Hapus divisi warna lama
+
+          if (detail === 'Hadir') detailTextEl.addClass('text-success');
+          else if (detail === 'Alpha') detailTextEl.addClass('text-danger');
+          else if (detail.toLowerCase().includes('libur') || detail.toLowerCase().includes('acara')) detailTextEl.addClass('text-primary');
+          else detailTextEl.addClass('text-secondary'); // Default
+
+        });
+
+    }); // <-- Penutup DOMContentLoaded
+
+    // ===================================
+    // FUNGSI API (GLOBAL)
+    // ===================================
+    async function postToAPI(data) {
+      console.log("Request dikirim ke API:", data);
+
+      const controller = new AbortController();
+      // Naikkan timeout jadi 20 detik untuk jaga-jaga
+      const timeout = setTimeout(() => controller.abort(), 20000);
+
+      try {
+        const res = await fetch(API_URL, {
+          method: 'POST',
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+          signal: controller.signal
+        });
+        const text = await res.text();
+        console.log("Respon mentah dari API:", text);
+
+        clearTimeout(timeout);
+
+        try {
+          return JSON.parse(text);
+        } catch (e) {
+          console.error("Gagal parse JSON:", text);
+          // Cek apakah errornya HTML halaman login Google
+          if (text.toLowerCase().includes("<html") && text.toLowerCase().includes("google")) {
+            throw new Error("Gagal terhubung ke API. Kemungkinan permission deployment salah (Harus 'Anyone').");
+          }
+          throw new Error("Server mengembalikan respon yang tidak valid.");
+        }
+      } catch (err) {
+        clearTimeout(timeout);
+        if (err.name === 'AbortError') {
+          throw new Error("Server timeout (lebih dari 20 detik). Coba lagi nanti.");
+        }
+        console.error("Fetch Error:", err);
+        throw err;
+      }
+    }
+
+    </script>
+</body>
+</html>
+
+
