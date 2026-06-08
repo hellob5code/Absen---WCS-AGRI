@@ -1128,7 +1128,20 @@ streakText.innerHTML = `Streak <span style="color: #FFA500; font-weight: bold;">
                     document.getElementById('qr-scan-area').style.display = 'none';
                     document.getElementById('hadir-photo-area').style.display = 'block';
                     await startHadirCamera();
-                    window.pendingAttendanceData = { decodedText, latitude: position.latitude, longitude: position.longitude };
+                    const cleanQR = String(decodedText)
+                        .trim()
+                        .replace(/\n/g, "")
+                        .replace(/\r/g, "")
+                        .replace(/\t/g, "");
+
+                    console.log("RAW QR:", decodedText);
+                    console.log("CLEAN QR:", cleanQR);
+
+                    window.pendingAttendanceData = {
+                        decodedText: cleanQR,
+                        latitude: position.latitude,
+                        longitude: position.longitude
+                    };
                 } catch (error) {
                     console.error('Error QR/Location/Camera:', error);
                     showInfoModal("Error", "Gagal memproses: " + error.message, false);
