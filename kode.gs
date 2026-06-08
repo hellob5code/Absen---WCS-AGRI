@@ -753,7 +753,18 @@ function markHadirViaQR(nama, divisi, qrCodeData, latitude, longitude, imageData
     // === Validasi Input Awal ===
     const submissionCheck = checkIfAlreadySubmitted(nama);
     if (submissionCheck.submitted) return { success: false, message: submissionCheck.message };
-    if (qrCodeData !== CONFIG.QR_SECRET_KEY) return { success: false, message: "QR Code tidak valid." };
+
+    const scannedQR = String(qrCodeData || "").trim();
+    const validQR = String(CONFIG.QR_SECRET_KEY || "").trim();
+    Logger.log("SCANNED QR: [" + scannedQR + "]");
+    Logger.log("VALID QR  : [" + validQR + "]");
+    
+    if (scannedQR !== validQR) {
+      return {
+        success: false,
+        message: "QR Code tidak valid."
+      };
+    }
 
     // === Validasi Lokasi ===
     if (!latitude || !longitude) {
