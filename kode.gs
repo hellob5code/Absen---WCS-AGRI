@@ -753,7 +753,7 @@ function markHadirViaQR(nama, divisi, qrCodeData, latitude, longitude, imageData
     // === Validasi Input Awal ===
     const submissionCheck = checkIfAlreadySubmitted(nama);
     if (submissionCheck.submitted) return { success: false, message: submissionCheck.message };
-    // === if (!isAttendanceWindowOpen()) return { success: false, message: "Absensi hanya dibuka pada hari Sabtu, jam 8:00 - 16:00." };  ===
+    // if (!isAttendanceWindowOpen()) return { success: false, message: "Absensi hanya dibuka pada hari Sabtu, jam 8:00 - 16:00." };
     if (qrCodeData !== CONFIG.QR_SECRET_KEY) return { success: false, message: "QR Code tidak valid." };
 
     // === Validasi Lokasi ===
@@ -817,7 +817,7 @@ function markIzinFromDashboard(nama, divisi, alasan, imageData) {
   try {
     const submissionCheck = checkIfAlreadySubmitted(nama);
     if (submissionCheck.submitted) return { success: false, message: submissionCheck.message };
-    if (!isAttendanceWindowOpen()) return { success: false, message: "Pengajuan izin hanya bisa pada hari Sabtu, jam 8:00 - 16:00." };
+    // if (!isAttendanceWindowOpen()) return { success: false, message: "Pengajuan izin hanya bisa pada hari Sabtu, jam 8:00 - 16:00." };
     if (!alasan || alasan.trim() === "") return { success: false, message: "Alasan izin tidak boleh kosong."};
     if (!imageData) return { success: false, message: "Foto bukti tidak boleh kosong."};
 
