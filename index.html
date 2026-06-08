@@ -1115,37 +1115,74 @@ streakText.innerHTML = `Streak <span style="color: #FFA500; font-weight: bold;">
             const qrResultElement = document.getElementById('qr-result');
             const config = { fps: 10, qrbox: { width: 250, height: 250 } };
 
-            const qrCodeSuccessCallback = async (decodedText, decodedResult) => {
-                if (!html5QrCode || !html5QrCode.isScanning) return; // Pastikan masih scan
+            let qrProcessing = false;
 
-                qrResultElement.innerText = `Scan berhasil! Mendapatkan lokasi Anda...`;
+            const qrCodeSuccessCallback = async (decodedText, decodedResult) => {
+
+                // cegah double scan
+                if (qrProcessing) return;
+                qrProcessing = true;
 
                 try {
-                    await html5QrCode.stop();
-                    html5QrCode = null; // Reset objek scanner
-                    const position = await getCurrentPosition();
-                    qrResultElement.innerText = `Lokasi didapat! Memulai kamera depan...`;
-                    document.getElementById('qr-scan-area').style.display = 'none';
-                    document.getElementById('hadir-photo-area').style.display = 'block';
-                    await startHadirCamera();
-                    const cleanQR = String(decodedText)
+
+                    console.log("RAW decodedText:", decodedText);
+                    console.log("RAW decodedResult:", decodedResult);
+
+                    // VALIDASI hasil scan
+                    const cleanQR = String(decodedText || "")
                         .trim()
                         .replace(/\n/g, "")
                         .replace(/\r/g, "")
                         .replace(/\t/g, "");
 
-                    console.log("RAW QR:", decodedText);
                     console.log("CLEAN QR:", cleanQR);
 
+                    // DEBUG penting
+                    alert("QR RESULT = " + cleanQR);
+
+                    if (!cleanQR) {
+                        throw new Error("QR kosong / gagal dibaca");
+                    }
+
+                    qrResultElement.innerText = `Scan berhasil! Mendapatkan lokasi Anda...`;
+
+                    // STOP scanner
+                    if (html5QrCode) {
+                        await html5QrCode.stop();
+                        html5QrCode.clear();
+                        html5QrCode = null;
+                    }
+
+                    const position = await getCurrentPosition();
+
+                    qrResultElement.innerText = `Lokasi didapat! Memulai kamera depan...`;
+
+                    document.getElementById('qr-scan-area').style.display = 'none';
+                    document.getElementById('hadir-photo-area').style.display = 'block';
+
+                    await startHadirCamera();
+
+                    // SIMPAN hasil scan FINAL
                     window.pendingAttendanceData = {
-                        decodedText: cleanQR,
+                        qrCodeData: cleanQR,
                         latitude: position.latitude,
                         longitude: position.longitude
                     };
+
+                    console.log("FINAL pendingAttendanceData:", window.pendingAttendanceData);
+
                 } catch (error) {
-                    console.error('Error QR/Location/Camera:', error);
-                    showInfoModal("Error", "Gagal memproses: " + error.message, false);
+
+                    console.error("QR CALLBACK ERROR:", error);
+
+                    showInfoModal(
+                        "Error",
+                        "QR gagal diproses: " + error.message,
+                        false
+                    );
+
                     $('#qrModal').modal('hide');
+
                 }
             };
 
@@ -1215,7 +1252,7 @@ streakText.innerHTML = `Streak <span style="color: #FFA500; font-weight: bold;">
                     action: 'markHadirViaQR',
                     nama: currentUser.nama,
                     divisi: currentUser.divisi,
-                    qrCodeData: window.pendingAttendanceData.decodedText,
+                    qrCodeData: window.pendingAttendanceData.qrCodeData,
                     latitude: window.pendingAttendanceData.latitude,
                     longitude: window.pendingAttendanceData.longitude,
                     imageData: imageData
@@ -1330,5 +1367,4 @@ streakText.innerHTML = `Streak <span style="color: #FFA500; font-weight: bold;">
     </script>
 </body>
 </html>
-
 
