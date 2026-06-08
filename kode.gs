@@ -755,27 +755,12 @@ function markHadirViaQR(nama, divisi, qrCodeData, latitude, longitude, imageData
     if (submissionCheck.submitted) return { success: false, message: submissionCheck.message };
 
     // === Validasi QR ===
-    let scannedQR = "";
-    
-    // Jika hasil scanner object
-    if (typeof qrCodeData === "object" && qrCodeData !== null) {
-      scannedQR = qrCodeData.text || "";
-    } else {
-      scannedQR = qrCodeData || "";
-    }
-    
-    // Bersihkan karakter tambahan
-    scannedQR = String(scannedQR)
-      .trim()
-      .replace(/\n/g, "")
-      .replace(/\r/g, "");
-    
-    const validQR = String(CONFIG.QR_SECRET_KEY)
-      .trim();
-    
-    Logger.log("SCANNED QR: [" + scannedQR + "]");
-    Logger.log("VALID QR  : [" + validQR + "]");
-    
+    const scannedQR = String(qrCodeData || "").trim();
+    const validQR = String(CONFIG.QR_SECRET_KEY || "").trim();
+
+    Logger.log("SCANNED QR = [" + scannedQR + "]");
+    Logger.log("VALID QR   = [" + validQR + "]");
+
     if (scannedQR !== validQR) {
       return {
         success: false,
